@@ -89,7 +89,7 @@ class GeneticOptimizer(Optimizer):
         file.flush()
 
     def on_gen_end(self, context, generation_no, results):
-        self.logger.debug('Generation %d, max: %s' % (gen, results.max()))
+        self.logger.debug('Generation %d, max: %s' % (generation_no, results.max()))
         if self.fileverbose:
             self.log_configuration(context, generation_no, results)
             self.log_generation(context, generation_no, results)
