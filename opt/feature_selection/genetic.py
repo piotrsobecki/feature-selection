@@ -3,11 +3,10 @@ import array, random, numpy as np
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_val_predict,cross_val_score
 
-from opt.base import Configuration
-from opt.genetic import GeneticOptimizer
+from opt.genetic import GeneticOptimizer, GeneticConfiguration
 from deap import creator, base, tools, algorithms
 
-class FeatureSelectionConfiguration(Configuration):
+class FeatureSelectionConfiguration(GeneticConfiguration):
     def __init__(self, individual, all_columns):
         super().__init__(individual)
         self.all_columns = all_columns
