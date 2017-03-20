@@ -1,8 +1,26 @@
 import logging
+import json
 import pandas as pd
 from deap import creator, base, tools, algorithms
-from opt.base import Configuration, Optimizer
+from opt.base import Configuration, Optimizer,Results
 
+
+class RoutingHOF():
+    def __init__(self, optimizer, context, results_class):
+        self.optimizer = optimizer
+        self.context = context
+        self.results_class = results_class
+        self.ngen = 0
+        self.results = None
+
+    def insert(self, item):
+        pass
+
+    def update(self, population):
+        results = self.results_class([self.optimizer.configuration(x) for x in population])
+        self.optimizer.on_gen_end(self.context, self.ngen, results)
+        self.ngen += 1
+        self.results = results
 
 class GeneticConfiguration(Configuration):
     def value(self):
@@ -11,12 +29,14 @@ class GeneticConfiguration(Configuration):
 
 # noinspection PyTypeChecker,PyUnresolvedReferences
 class GeneticOptimizer(Optimizer):
+
+    results_class = Results
+
     def __init__(self, **settings):
         if settings is None:
             settings = {}
-        self.logger = logging.getLogger('prostatex')
+        self.logger = logging.getLogger('optimizer')
         self.settings = {**self.default_settings(), **settings}
-        self.verbose = False
 
     def default_settings(self):
         return {
@@ -25,18 +45,18 @@ class GeneticOptimizer(Optimizer):
             'ngen': 40,
             'n': 300,
             'mutpb': 0.1,
-            'cxpb': 0.5
+            'cxpb': 0.5,
+            "fileverbose": True
         }
 
-    def configuration(self, individual):
-        return GeneticConfiguration(individual)
+    def eval(self, individual):
+        raise NotImplementedError()
 
     def individual(self, toolbox):
         raise NotImplementedError()
-        # creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-        # creator.create("Individual", array.array, typecode='b', fitness=creator.FitnessMax)
-        # toolbox.register("attr_bool", random.randint, 0, 1)
-        # toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, 10)
+
+    def configuration(self, individual):
+        return GeneticConfiguration(individual)
 
     def get_genlog(self):
         return pd.read_csv(self.settings['genlog'], self.settings['sep'], index_col=0)
@@ -59,27 +79,58 @@ class GeneticOptimizer(Optimizer):
     def population(self, toolbox):
         toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
-    def eval(self, individual):
-        raise NotImplementedError()
-        # return sum(individual),
-
-    def results(self, population):
-        return Results(population)
-
     def __getattr__(self, item):
-        return self.settings[item]
+        if item in self.settings:
+            return self.settings[item]
+        return None
+
+    def write_row_2file(self, row, csv_writer, file):
+        csv_writer.writerow(row)
+        file.flush()
+
+    def on_gen_end(self, context, generation_no, results):
+        self.logger.debug('Generation %d, max: %s' % (gen, results.max()))
+        if self.fileverbose:
+            self.log_configuration(context, generation_no, results)
+            self.log_generation(context, generation_no, results)
 
     def on_fit_start(self, context):
-        pass
+        if self.fileverbose:
+            self.setup_configuration_log(context)
+            self.setup_genlog(context)
 
     def on_fit_end(self, context):
-        pass
+        if self.fileverbose:
+            context['csv_file'].close()
+            context['csv_gen_file'].close()
 
-    def on_gen_end(self, context, gen, results):
-        self.logger.debug('Generation %d, max: %s' % (gen, results.max()))
+    def log_generation(self, context, generation_no, results):
+        gen_row = [generation_no]
+        gen_row.extend(results.fitness())
+        self.write_row_2file(gen_row, context['csv_gen'], context['csv_gen_file'])
+
+    def log_configuration(self, context, generation_no, results):
+        max_config = results.max()
+        row = [generation_no, max_config.value()]
+        row.extend(max_config.as_list())
+        self.write_row_2file(row, context['csv'], context['csv_file'])
+
+    def setup_configuration_log(self,context):
+        cols = ['Generation', 'Max Fitness']
+        cols.extend(self.features.columns.tolist())
+        context['csv_file'] = open(self.datalog, 'a+')
+        context['csv'] = csv.writer(context['csv_file'], delimiter=';', lineterminator='\n')
+        self.write_row_2file(cols, context['csv'], context['csv_file'])
+
+    def setup_genlog(self,context):
+        gencols = ['Generation']
+        gencols.extend(['#' + str(x) for x in range(0, self.n)])
+        context['csv_gen_file'] = open(self.genlog, 'a+')
+        context['csv_gen'] = csv.writer(context['csv_gen_file'], delimiter=';', lineterminator='\n')
+        self.write_row_2file(gencols, context['csv_gen'], context['csv_gen_file'])
 
     def fit(self):
-        self.logger.info(self)
+        self.logger.info(self.settings)
         toolbox = base.Toolbox()
         self.individual(toolbox)
         self.population(toolbox)
@@ -90,7 +141,7 @@ class GeneticOptimizer(Optimizer):
         population = toolbox.population(self.n)
         context = {}
         self.on_fit_start(context)
-        hof = RoutingHOF(self, context)
+        hof = RoutingHOF(self, context, results_class=self.results_class)
         algorithms.eaSimple(population, toolbox, cxpb=self.cxpb, mutpb=self.mutpb, ngen=self.ngen, halloffame=hof,
                             verbose=self.verbose)
         self.on_fit_end(context)
