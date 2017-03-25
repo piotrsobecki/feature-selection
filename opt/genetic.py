@@ -152,6 +152,9 @@ class GeneticOptimizer(Optimizer):
         if self.fileverbose:
             context.log.close(context)
 
+    def log_helper(self):
+        return GeneticLogHelper(self.settings['genlog'],self.settings['datalog'], self.settings['sep'])
+
     def fit(self):
         self.logger.info(self.settings)
         toolbox = base.Toolbox()
@@ -164,9 +167,9 @@ class GeneticOptimizer(Optimizer):
         population = toolbox.population(self.n)
         context = {
             'settings': self.settings,
-            'features': self.features
+            'features': self.features,
+            'log': self.log_helper()
         }
-        context.log = GeneticLogHelper(**self.settings)
         self.on_fit_start(context)
         hof = RoutingHOF(self, context, results_class=self.results_class)
         algorithms.eaSimple(population, toolbox, cxpb=self.cxpb, mutpb=self.mutpb, ngen=self.ngen, halloffame=hof,
