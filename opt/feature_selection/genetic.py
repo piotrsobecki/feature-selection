@@ -1,10 +1,11 @@
 import json, csv
 import array, random, numpy as np
 from sklearn.model_selection import StratifiedKFold
-from sklearn.model_selection import cross_val_predict,cross_val_score
+from sklearn.model_selection import cross_val_predict, cross_val_score
 
 from opt.genetic import GeneticOptimizer, GeneticConfiguration
 from deap import creator, base, tools, algorithms
+
 
 class FeatureSelectionConfiguration(GeneticConfiguration):
     def __init__(self, individual, all_columns):
@@ -38,6 +39,7 @@ class CVGeneticFeatureSelection(GeneticOptimizer):
         self.labels = labels.as_matrix()
         self.score_func = score_func
         super().__init__(**settings)
+        self.settings['n'] = min(self.settings['n'], self.settings['n_max'])
 
     def configuration(self, individual):
         return FeatureSelectionConfiguration(individual, self.features.columns)
@@ -46,8 +48,9 @@ class CVGeneticFeatureSelection(GeneticOptimizer):
         return {
             **super().default_settings(),
             "cv_fold": 3,
-            "str(clf)":str(self.clfs),
-            "n": self.features_len()
+            "str(clf)": str(self.clfs),
+            "n": self.features_len(),
+            "n_max": 1000
         }
 
     def features_len(self):
@@ -59,7 +62,7 @@ class CVGeneticFeatureSelection(GeneticOptimizer):
         toolbox.register("attr_bool", random.randint, 0, 1)
         toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, self.features_len())
 
-    def eval_on(self,clfs,features,labels):
+    def eval_on(self, clfs, features, labels):
         fitness = [0]
         cv = StratifiedKFold(n_splits=self.cv_fold, random_state=0)
         for clf in clfs:
@@ -67,7 +70,7 @@ class CVGeneticFeatureSelection(GeneticOptimizer):
                 y_proba = cross_val_predict(clf, features, labels, cv=cv, method='predict_proba')
                 fitness.append(self.score_func(labels, y_proba))
             else:
-                fitness.append(cross_val_score(clf, features, labels,  cv=cv).mean())
+                fitness.append(cross_val_score(clf, features, labels, cv=cv).mean())
         return max(fitness)
 
     def eval(self, individual):
@@ -75,5 +78,5 @@ class CVGeneticFeatureSelection(GeneticOptimizer):
         columns = self.configuration(individual).columns()
         if len(columns) > 0:
             features_subset = self.features.as_matrix(columns=columns)
-            fitness = self.eval_on(self.clfs,features_subset,self.labels)
+            fitness = self.eval_on(self.clfs, features_subset, self.labels)
         return fitness,
