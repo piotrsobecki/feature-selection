@@ -59,18 +59,21 @@ class CVGeneticFeatureSelection(GeneticOptimizer):
         toolbox.register("attr_bool", random.randint, 0, 1)
         toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, self.features_len())
 
-    def eval(self, individual):
+    def eval_on(self,features,labels):
         fitness = [0]
+        cv = StratifiedKFold(n_splits=self.cv_fold, random_state=0)
+        for clf in self.clfs:
+            if self.score_func is not None:
+                y_proba = cross_val_predict(clf, features, labels, cv=cv, method='predict_proba')
+                fitness.append(self.score_func(labels, y_proba))
+            else:
+                fitness.append(cross_val_score(clf, features, labels,  cv=cv).mean())
+        return max(fitness)
+
+    def eval(self, individual):
+        fitness = 0
         columns = self.configuration(individual).columns()
         if len(columns) > 0:
             features_subset = self.features.as_matrix(columns=columns)
-            cv = StratifiedKFold(n_splits=self.cv_fold, random_state=0)
-            for clf in self.clfs:
-                if self.score_func is not None:
-                    y_proba = cross_val_predict(clf, features_subset, self.labels, cv=cv, method='predict_proba')
-                    fitness.append(self.score_func(self.labels, y_proba))
-                else:
-                    fitness.append(cross_val_score(clf, features_subset, self.labels,  cv=cv).mean())
-        else:
-            fitness = np.zeros(len(self.clfs))
-        return max(fitness),
+            fitness = self.eval_on(features_subset,self.labels)
+        return fitness,
