@@ -4,7 +4,8 @@ import pandas as pd
 from deap import creator, base, tools, algorithms
 from opt.base import Configuration, Optimizer, Results
 
-#TODO MOVE DATALOG SOMEWHERE LOWER
+
+# TODO MOVE DATALOG SOMEWHERE LOWER
 class GeneticLogHelper():
     def __init__(self, genlog, datalog, sep):
         self.genlog = genlog
@@ -57,7 +58,6 @@ class GeneticLogHelper():
     def close(self, context):
         context['csv_file'].close()
         context['csv_gen_file'].close()
-
 
 
 class RoutingHOF():
@@ -162,9 +162,10 @@ class GeneticOptimizer(Optimizer):
         self.mutate(toolbox)
         self.select(toolbox)
         population = toolbox.population(self.n)
-        context = {}
-        context.settings = self.settings
-        context.features = self.features
+        context = {
+            'settings': self.settings,
+            'features': self.features
+        }
         context.log = GeneticLogHelper(**self.settings)
         self.on_fit_start(context)
         hof = RoutingHOF(self, context, results_class=self.results_class)
