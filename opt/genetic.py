@@ -39,14 +39,14 @@ class GeneticLogHelper():
 
     def setup_genlog(self, context):
         gencols = ['Generation']
-        gencols.extend(['#' + str(x) for x in range(0, context.settings['n'])])
+        gencols.extend(['#' + str(x) for x in range(0, context['settings']['n'])])
         context['csv_gen_file'] = open(self.genlog, 'a+')
         context['csv_gen'] = csv.writer(context['csv_gen_file'], delimiter=';', lineterminator='\n')
         self.write_row_2file(gencols, context['csv_gen'], context['csv_gen_file'])
 
     def setup_configuration_log(self, context):
         cols = ['Generation', 'Max Fitness']
-        cols.extend(context.features.columns.tolist())
+        cols.extend(context['features'].columns.tolist())
         context['csv_file'] = open(self.datalog, 'a+')
         context['csv'] = csv.writer(context['csv_file'], delimiter=';', lineterminator='\n')
         self.write_row_2file(cols, context['csv'], context['csv_file'])
