@@ -7,7 +7,7 @@ with open('LICENSE') as f:
     license = f.read()
 
 setup(name='opt',
-      version='0.3.8',
+      version='0.3.9',
       description='Optimization',
       long_description=readme,
       url='https://github.com/piotrsobecki/opt',
