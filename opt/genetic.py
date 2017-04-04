@@ -104,15 +104,15 @@ class GeneticOptimizer(Optimizer):
 
     def on_gen_end(self, context, generation_no, results):
         self.logger.debug('Generation %d, max: %s' % (generation_no, results.max()))
-        if self.fileverbose:
+        if self.verbose:
             context['log'].log(context, generation_no, results)
 
     def on_fit_start(self, context):
-        if self.fileverbose:
+        if self.verbose:
             context['log'].setup(context)
 
     def on_fit_end(self, context):
-        if self.fileverbose:
+        if self.verbose:
             context['log'].close(context)
 
     def log_helper(self):
