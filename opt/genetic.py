@@ -1,64 +1,27 @@
+import csv
+import json
 import logging
-import json, csv
+
 import pandas as pd
-from deap import creator, base, tools, algorithms
+from deap import base, tools, algorithms
+
 from opt.base import Configuration, Optimizer, Results
 
 
-# TODO MOVE DATALOG SOMEWHERE LOWER
-class GeneticLogHelper():
-    def __init__(self, genlog, datalog, sep):
-        self.genlog = genlog
-        self.datalog = datalog
-        self.sep = sep
+class LogHelper():
 
-    def get_genlog(self):
-        return pd.read_csv(self.genlog, self.sep, index_col=0)
-
-    def get_datalog(self):
-        return pd.read_csv(self.datalog, self.sep, index_col=0)
-
-    def write_row_2file(self, row, csv_writer, file):
-        csv_writer.writerow(row)
-        file.flush()
+    def __init__(self):
+        super().__init__()
+        self.logger = logging.getLogger('optimizer')
 
     def log(self, context, generation_no, results):
-        self.log_generation(context, generation_no, results)
-        self.log_configuration(context, generation_no, results)
-
-    def log_generation(self, context, generation_no, results):
-        gen_row = [generation_no]
-        gen_row.extend(results.fitness())
-        self.write_row_2file(gen_row, context['csv_gen'], context['csv_gen_file'])
-
-    def log_configuration(self, context, generation_no, results):
-        max_config = results.max()
-        row = [generation_no, max_config.value()]
-        row.extend(max_config.as_list())
-        self.write_row_2file(row, context['csv'], context['csv_file'])
-
-    def setup_genlog(self, context):
-        gencols = ['Generation']
-        gencols.extend(['#' + str(x) for x in range(0, context['settings']['n'])])
-        context['csv_gen_file'] = open(self.genlog, 'a+')
-        context['csv_gen'] = csv.writer(context['csv_gen_file'], delimiter=';', lineterminator='\n')
-        self.write_row_2file(gencols, context['csv_gen'], context['csv_gen_file'])
-
-    def setup_configuration_log(self, context):
-        cols = ['Generation', 'Max Fitness']
-        cols.extend(context['features'].columns.tolist())
-        context['csv_file'] = open(self.datalog, 'a+')
-        context['csv'] = csv.writer(context['csv_file'], delimiter=';', lineterminator='\n')
-        self.write_row_2file(cols, context['csv'], context['csv_file'])
+        pass
 
     def setup(self, context):
-        self.setup_configuration_log(context)
-        self.setup_genlog(context)
+        pass
 
     def close(self, context):
-        context['csv_file'].close()
-        context['csv_gen_file'].close()
-
+        pass
 
 class RoutingHOF():
     def __init__(self, optimizer, context, results_class):
@@ -101,7 +64,7 @@ class GeneticOptimizer(Optimizer):
             'n': 300,
             'mutpb': 0.1,
             'cxpb': 0.5,
-            "fileverbose": True
+            "verbose": True
         }
 
     def eval(self, individual):
@@ -153,7 +116,7 @@ class GeneticOptimizer(Optimizer):
             context['log'].close(context)
 
     def log_helper(self):
-        return GeneticLogHelper(self.settings['genlog'],self.settings['datalog'], self.settings['sep'])
+        return LogHelper()
 
     def fit(self):
         self.logger.info(self.settings)

@@ -20,8 +20,7 @@ class TestStringMethods(unittest.TestCase):
 
         cls = [KNeighborsClassifier()]
 
-        fs = CVGeneticFeatureSelection(cls, features, labels, fileverbose=False, genlog='genlog.csv',
-                                       datalog='datalog.csv', sep=';')
+        fs = CVGeneticFeatureSelection(cls, features, labels, verbose=False, genlog='genlog.csv',  datalog='datalog.csv', sep=';')
         results = fs.fit()
 
         self.assertTrue(True)
