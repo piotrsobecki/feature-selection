@@ -8,7 +8,7 @@ from deap import creator, base, tools, algorithms
 class WeightsLogHelper(LogHelper):
     def log(self, context, generation_no, results):
         config = results.max()
-        self.logger.log('Generation %d: %s' % (generation_no, config))
+        self.logger.info('Generation %d: %s' % (generation_no, config))
 
 
 class WeightOptimizer(GeneticOptimizer):

@@ -119,7 +119,6 @@ class GeneticOptimizer(Optimizer):
         return LogHelper()
 
     def fit(self):
-        self.logger.info(self.settings)
         toolbox = base.Toolbox()
         self.individual(toolbox)
         self.population(toolbox)
