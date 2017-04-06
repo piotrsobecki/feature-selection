@@ -49,8 +49,7 @@ class ConsciousClassifier():
                 if pred == prec_key:
                     p[prec_key] = self.precisions[pred]
                 else:
-                    p[prec_key] = (1 - self.precisions[pred]) * (1 - self.recalls[prec_key]) / (
-                        recall - (1 - self.recalls[pred]))
+                    p[prec_key] = (1 - self.precisions[pred]) * (1 - self.recalls[prec_key]) / (recall - (1 - self.recalls[pred]))
             out.append(list(p.values()))
         return out
 
