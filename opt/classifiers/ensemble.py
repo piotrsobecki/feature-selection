@@ -9,11 +9,12 @@ from sklearn.model_selection import cross_val_predict
 
 
 class ConsciousClassifier():
-    def __init__(self, inner, columns=None, weight=0, cv=10):
+    def __init__(self, inner, columns=None, p =0, weight=0, cv=10):
         self.inner = inner
         self.columns = columns
         self.cv = cv
         self.weight = weight
+        self.p=p
 
     def fit(self, X, Y):
         if self.columns is None:
@@ -47,7 +48,7 @@ class ConsciousClassifier():
             p = {}
             for prec_key in self.precisions:
                 if pred == prec_key:
-                    p[prec_key] = self.precisions[pred]
+                    p[prec_key] = max(0,min(1, max(self.precisions[pred], self.p)))
                 else:
                     p[prec_key] = (1 - self.precisions[pred]) * (1 - self.recalls[prec_key]) / (recall - (1 - self.recalls[pred]))
             out.append(list(p.values()))
