@@ -8,38 +8,44 @@ from sklearn.metrics import recall_score
 from sklearn.model_selection import cross_val_predict
 
 
-class ConsciousClassifier():
-    def __init__(self, inner, columns=None, p =0, weight=0, cv=10):
+class ProbabalisticClassifier():
+    def __init__(self, inner, columns=None, p=0, weight=0, method="precision_recal", cv=10):
         self.inner = inner
         self.columns = columns
         self.cv = cv
         self.weight = weight
-        self.p=p
+        self.p = p
+        self.method = method
 
-    def fit(self, X, Y):
+    def fit(self, X, Y, weighting=accuracy_score):
         if self.columns is None:
             self.columns = set(X.columns.values)
-        else:
-            X = X[list(self.columns)]
-        self.inner.fit(X, Y)
+        X_ss = X.loc[:,list(self.columns)]
+        self.inner.fit(X_ss, Y)
+        self.precisions, self.recalls, self.weight = self.precisions_recalls_weight(X_ss, Y, weighting=weighting)
+        return self
+
+    def precisions_recalls_weight(self, X, Y, weighting=accuracy_score):
         yhat = cross_val_predict(self.inner, X, Y, cv=self.cv)
-        self.recalls = {}
-        self.precisions = {}
-        if not self.weight:
-            self.weight = accuracy_score(Y, yhat)
+        recalls = {}
+        precisions = {}
+        weight = self.weight
+        if not weight:
+            weight = weighting(Y, yhat)
         for label in unique(Y):
             Y_binary = Y == label
             P_binary = yhat == label
-            self.recalls[label] = recall_score(Y_binary, P_binary)
-            self.precisions[label] = precision_score(Y_binary, P_binary)
-        return self
+            recalls[label] = recall_score(Y_binary, P_binary)
+            precisions[label] = precision_score(Y_binary, P_binary)
+        return precisions, recalls, weight
 
     def predict(self, X, **kwargs):
-        return self.inner.predict(X=X[list(self.columns)], **kwargs)
+        X_ss = X.loc[:,list(self.columns)]
+        return self.inner.predict(X=X_ss, **kwargs)
 
     def predict_proba(self, X, **kwargs):
-        # if getattr(self.inner, 'predict_proba') is not None:
-        #    return self.inner.predict_proba(X=X[list(self.columns)], **kwargs)
+        if self.method is 'predict_proba' and getattr(self.inner, 'predict_proba') is not None:
+            return self.inner.predict_proba(X=X[list(self.columns)], **kwargs)
         out = []
         recall = 0
         for pred, rec in self.recalls.items():
@@ -48,9 +54,10 @@ class ConsciousClassifier():
             p = {}
             for prec_key in self.precisions:
                 if pred == prec_key:
-                    p[prec_key] = max(0,min(1, max(self.precisions[pred], self.p)))
+                    p[prec_key] = max(0, min(1, max(self.precisions[pred], self.p)))
                 else:
-                    p[prec_key] = (1 - self.precisions[pred]) * (1 - self.recalls[prec_key]) / (recall - (1 - self.recalls[pred]))
+                    p[prec_key] = (1 - self.precisions[pred]) * (1 - self.recalls[prec_key]) / (
+                    recall - (1 - self.recalls[pred]))
             out.append(list(p.values()))
         return out
 
@@ -58,7 +65,7 @@ class ConsciousClassifier():
         return set(X.columns.values).issuperset(self.columns)
 
 
-class ProbabilityEnsemble(BaseEstimator):
+class WeightedEnsemble(BaseEstimator):
     def __init__(self, classifiers, cv=10):
         self.classifiers = classifiers
         self.cv = cv
