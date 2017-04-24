@@ -80,7 +80,7 @@ def test(name, alpha, beta, weight, method='predict_proba'):
 
 
 # Weighted
-print("Configuration;Version;Alpha;Beta;Weight;AUC;Err")
+print("Configuration;Version;Alpha;Beta;Weight;AUC")
 test("Probabalistic Ensemble",   0,   1, None)
 test("Probabalistic Ensemble", .50, .50, None)
 test("Probabalistic Ensemble", .25, .75, None)
