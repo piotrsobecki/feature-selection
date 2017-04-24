@@ -1,4 +1,5 @@
 import numpy
+import math
 from numpy import unique
 from sklearn.base import BaseEstimator
 from sklearn.metrics import accuracy_score
@@ -9,11 +10,13 @@ from sklearn.model_selection import cross_val_predict
 
 
 class ProbabalisticClassifier():
-    def __init__(self, inner, columns=None, p=0, weight=0, method="precision_recal", cv=10):
+    def __init__(self, inner, columns=None, alpha=1, beta=0, p=0, weight=0, method="precision_recal", cv=10):
         self.inner = inner
         self.columns = columns
         self.cv = cv
         self.weight = weight
+        self.alpha = alpha
+        self.beta = beta
         self.p = p
         self.method = method
 
@@ -23,7 +26,39 @@ class ProbabalisticClassifier():
         X_ss = X.loc[:,list(self.columns)]
         self.inner.fit(X_ss, Y)
         self.precisions, self.recalls, self.weight = self.precisions_recalls_weight(X_ss, Y, weighting=weighting)
+        self.labels = numpy.unique(Y)
         return self
+
+
+    def p0(self,X,**kwargs):
+        if self.method is 'predict_proba' and getattr(self.inner, 'predict_proba') is not None:
+            yhat =  self.inner.predict_proba(X=X[list(self.columns)], **kwargs)
+        else:
+            yhat = self.inner.predict(X=X[list(self.columns)])
+            yhat_onehot = numpy.zeros((len(X), len(self.labels)))
+            yhat_onehot[numpy.arange(len(X)), yhat] = 1
+            yhat = yhat_onehot
+        return yhat
+
+    def p1(self,p0):
+        y = numpy.argmax(p0, axis=1)
+        out = []
+        recall = 0
+        for pred, rec in self.recalls.items():
+            recall += rec
+        for pred in  y:
+            p = {}
+            p_sum = 0
+            for prec_key in self.precisions:
+                if pred == prec_key:
+                    p[prec_key] = max(0, min(1, max(self.precisions[pred], self.p)))
+                else:
+                    p[prec_key] = (1 - self.precisions[pred]) * (1 - self.recalls[prec_key]) / ( recall - (1 - self.recalls[pred]))
+                p_sum += p[prec_key]
+            for prec_key in self.precisions:
+                p[prec_key] = p[prec_key] / p_sum
+            out.append(list(p.values()))
+        return numpy.array(out)
 
     def precisions_recalls_weight(self, X, Y, weighting=accuracy_score):
         yhat = cross_val_predict(self.inner, X, Y, cv=self.cv)
@@ -44,22 +79,13 @@ class ProbabalisticClassifier():
         return self.inner.predict(X=X_ss, **kwargs)
 
     def predict_proba(self, X, **kwargs):
-        if self.method is 'predict_proba' and getattr(self.inner, 'predict_proba') is not None:
-            return self.inner.predict_proba(X=X[list(self.columns)], **kwargs)
-        out = []
-        recall = 0
-        for pred, rec in self.recalls.items():
-            recall += rec
-        for pred in self.predict(X):
-            p = {}
-            for prec_key in self.precisions:
-                if pred == prec_key:
-                    p[prec_key] = max(0, min(1, max(self.precisions[pred], self.p)))
-                else:
-                    p[prec_key] = (1 - self.precisions[pred]) * (1 - self.recalls[prec_key]) / (
-                    recall - (1 - self.recalls[pred]))
-            out.append(list(p.values()))
-        return out
+        p0 = self.p0(X,**kwargs)
+        p1 = self.p1(p0)
+        p = numpy.add(self.beta * p1, self.alpha * p0) + self.p
+        #p = math.pow(math.e,p)/(1+math.pow(math.e,p))
+        #Normalize
+        row_sums = p.sum(axis=1)
+        return p / row_sums[:, numpy.newaxis]
 
     def supports(self, X):
         return set(X.columns.values).issuperset(self.columns)
