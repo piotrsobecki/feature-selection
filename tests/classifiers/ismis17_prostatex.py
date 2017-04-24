@@ -12,6 +12,14 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import KFold, StratifiedKFold
 
 from opt.classifiers.ensemble import ProbabalisticClassifier, WeightedEnsemble
+from sklearn.metrics import roc_curve, auc
+
+def roc_auc_score(y_test,y_score):
+    fpr, tpr, _ = roc_curve(y_test, y_score)
+    return auc(fpr, tpr)
+
+def prostatex_auc(labels, predictions):
+    return roc_auc_score(labels, predictions[:, 1])
 
 def crossvalidation(clf, X, Y, K=10):
     score = np.zeros(K)
